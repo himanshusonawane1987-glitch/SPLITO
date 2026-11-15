@@ -76,7 +76,17 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: gradle assembleDebug
+        run: |
+          gradle assembleDebug \
+            -x :capacitor-android:extractDebugAnnotations \
+            -x :capacitor-cordova-android-plugins:extractDebugAnnotations \
+            -x :capacitor-firebase-authentication:extractDebugAnnotations \
+            -x :capacitor-filesystem:extractDebugAnnotations \
+            -x :capacitor-share:extractDebugAnnotations \
+            -x :capacitor-local-notifications:extractDebugAnnotations \
+            -x :capacitor-app:extractDebugAnnotations \
+            -x :capacitor-app-launcher:extractDebugAnnotations \
+            -x :capacitor-network:extractDebugAnnotations
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
