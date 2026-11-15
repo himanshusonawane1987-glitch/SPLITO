@@ -86,8 +86,7 @@ jobs:
             -x :capacitor-local-notifications:extractDebugAnnotations \
             -x :capacitor-app:extractDebugAnnotations \
             -x :capacitor-app-launcher:extractDebugAnnotations \
-            -x :capacitor-network:extractDebugAnnotations \
-            -x :app:extractDebugAnnotations
+            -x :capacitor-network:extractDebugAnnotations 
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
