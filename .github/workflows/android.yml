@@ -36,11 +36,18 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Install Capacitor Android tools
+        run: npm install --legacy-peer-deps @capacitor/cli@8.6.0 @capacitor/android@8.6.0
+
       - name: Build web app
         run: npm run build
 
-      - name: Sync Capacitor Android
-        run: npx cap sync android
+      - name: Add Android platform and sync
+        run: |
+          rm -rf android
+          npx cap add android
+          npx cap sync android
+          git checkout HEAD -- android
 
       - name: Restore Android res images
         run: |
