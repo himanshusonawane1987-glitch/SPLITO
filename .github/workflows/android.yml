@@ -1,0 +1,92 @@
+name: Build SPLITO debug APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unzip project source
+        run: |
+          unzip -o source.zip
+          ls package.json src/App.tsx capacitor.config.ts android-res-bundle.txt
+
+      - name: Fix Capacitor config (package + name)
+        run: |
+          python3 - <<'EOF'
+          p = 'capacitor.config.ts'
+          s = open(p).read()
+          s = s.replace("appId: 'ai.hisaab.app'", "appId: 'com.hisaab.app'")
+          s = s.replace("appName: 'HISAAB - Smart Financial Ledger & Expense Manager'", "appName: 'SPLITO'")
+          open(p, 'w').write(s)
+          EOF
+          grep -E "appId|appName" capacitor.config.ts
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Restore Android res images
+        run: |
+          base64 -d android-res-bundle.txt | tar -xzf - -C android/app/src/main/res
+          find android/app/src/main/res -name '*.png' | wc -l
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle 8.13
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.13"
+
+      - name: Decode debug keystore
+        run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 secret is not set" >&2
+            exit 1
+          fi
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/debug.keystore
+          echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/android/app/debug.keystore" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          gradle assembleDebug \
+            -x :capacitor-android:extractDebugAnnotations \
+            -x :capacitor-cordova-android-plugins:extractDebugAnnotations \
+            -x :capacitor-firebase-authentication:extractDebugAnnotations \
+            -x :capacitor-filesystem:extractDebugAnnotations \
+            -x :capacitor-share:extractDebugAnnotations \
+            -x :capacitor-local-notifications:extractDebugAnnotations \
+            -x :capacitor-app:extractDebugAnnotations \
+            -x :capacitor-app-launcher:extractDebugAnnotations \
+            -x :capacitor-network:extractDebugAnnotations \
+            -x :app:extractDebugAnnotations
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: splito-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
